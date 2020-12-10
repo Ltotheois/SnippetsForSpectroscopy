@@ -1,0 +1,14 @@
+Top plot are the fft-coefficients.
+Beneath is a triplet of plots, with the first being the original spectrum,
+second the baseline that is substracted and third the resulting spectrum.
+On the bottom is a slider to change the cut-off frequency for the fft,
+but alternatively you can also click in the fft-coefficients plot or use
+the arrow keys and shift to change the cut-off frequency.
+
+If a matching info file is given, the duration of the fit is calculated correctly,
+otherwise it is set to 30 seconds.
+
+You can select multiple plots in the file selection window, press enter or space
+to save the changes for a file and go to the next file, press esc to skip it,
+press ctrl+q to close the app. Press ctrl+left to go to the previous file without
+saving.
