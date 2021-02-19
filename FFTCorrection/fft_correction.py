@@ -150,29 +150,28 @@ def decrease_standingwave(data_in, save_data):
 			# fig.canvas.mpl_disconnect(cid_1)
 			fig.canvas.mpl_disconnect(cid_2)
 			plt.close()
-		elif key in ["escape"]:
+		elif key in ["escape", "ctrl+right"]:
 			current_index += 1
 			if current_index >= len(data):
 				current_index = len(data)-1
 			update_plot()
-		elif key in ["ctrl+h"]:
+		elif key in ["ctrl+r"]:
 			update_plot()
-		elif key in ["ctrl+f"]:
+		elif key in ["ctrl+s"]:
 			try:
 				import tkinter as tk
-				from tkinter import simpledialog
+				from tkinter import filedialog
 				root = tk.Tk()
 				root.withdraw()
-				savename = simpledialog.askstring("Savename", "Enter filename for figure: ")
-				print(savename)
+				filename = filedialog.asksaveasfilename() 
 				root.destroy()
 			except Exception as E:
 				print(str(E))
-				savename = input("Enter filename: ")			
-			plt.savefig(savename)
+				filename = input("Enter filename: ")			
+			plt.savefig(filename)
 		elif key in ["ctrl+o"]:
 			data = get_data()
-			current_index = 1
+			current_index = 0
 			update_plot()
 	
 	def update_plot(rescale = True):
@@ -271,8 +270,8 @@ def decrease_standingwave(data_in, save_data):
 	tmp_ax = fig.add_subplot(gs[6, :])
 	tmp_ax.axis("off")
 	
-	buttons = [("Reset Zoom", "ctrl+h"), ("Previous", "ctrl+left"), ("Next", "escape"), ("Save", "enter")]
-	buttons_nsi = [("Quit", "ctrl+q"), ("Save Figure", "ctrl+f"), ("Replace Files", "ctrl+o")]
+	buttons = [("Reset Zoom", "ctrl+r"), ("Previous", "ctrl+left"), ("Next", "ctrl+right"), ("Save", "enter")]
+	buttons_nsi = [("Quit", "ctrl+q"), ("Save Figure", "ctrl+s"), ("Replace Files", "ctrl+o")]
 	refs = {}
 	
 	for i, (text, key) in enumerate(buttons):		
