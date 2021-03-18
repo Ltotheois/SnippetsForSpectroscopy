@@ -35,7 +35,7 @@ kwargs_font = {
 matplotlib.rc('font', **kwargs_font)
 
 settings = {
-	"splitting" 		:	4,
+	"splitting" 		:	3.0,
 	"width_gauss"		:	0.5,
 	"width_lorentz"		:	0.5,
 	"amp"				:	np.float64(1/(2*0.20870928052036772)),
@@ -44,7 +44,7 @@ settings = {
 	"fm_phase"			:	np.pi/2,
 	"am_phase"			:	0,
 	"hub"				:	1.5,
-	"cp"				:	1.0,
+	"cp"				:	0.0,
 	"duration"			:	100,
 	"frames"			:	1000,
 	"inline_sig_start"	:	4,
@@ -108,14 +108,6 @@ def make_collection(ax, xs, ys, colors, kwargs_plot, ind=None):
 	coll = matplotlib.collections.LineCollection(segs, color=colors, **kwargs_plot)
 	ref = ax.add_collection(coll)
 	return(ref)
-
-def spectrum_2f(offsets, lineshape, freq_xs, fm2_sine_ys):
-	out = []
-	for offset in offsets:
-		tmp = lineshape(freq_xs+offset-settings["cp"])*fm2_sine_ys
-		res = np.sum(tmp)/len(tmp)
-		out.append(res)
-	return(np.array(out))
 
 ##
 ## Basic Setup
@@ -342,9 +334,9 @@ axs["h2"].axis("off")
 # --- Eigth Row ---
 
 # DMDR Signal
-tmp_xs = np.linspace(-settings["spectrum_width"]/2, settings["spectrum_width"]/2, 101)
-tmp_ys = -spectrum_2f(tmp_xs, lineshape_on, freq_xs, fm2_sine_ys)
-axs[8].plot(tmp_xs, tmp_ys, color=color_dmdr+"40", **kwargs_plot)
+tmp_ys = np.gradient(np.gradient(spectrum_ys_on))-np.gradient(np.gradient(spectrum_ys_off))
+tmp_ys = tmp_ys/tmp_ys[int(len(tmp_ys)/2)]*np.nanmean(mixed2_ys)
+axs[8].plot(spectrum_xs, tmp_ys, color=color_dmdr+"40", **kwargs_plot)
 plot_dmdr = axs[8].scatter([], [], color=color_dmdr, s=12)
 
 # Styling
@@ -497,7 +489,6 @@ if len(sys.argv) > 1:
 else:
 	show = True
 	interval = 0
-
 
 fig.subplots_adjust(right = 0.8, top = 0.96)
 anim = animation.FuncAnimation(fig, animate, frames=settings["frames"]+100, interval=interval, blit=True, repeat=False, save_count=settings["frames"]+100)
