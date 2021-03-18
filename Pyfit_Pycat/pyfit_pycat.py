@@ -223,8 +223,8 @@ def dict_to_parvar(dct):
 	
 	formats = [' {:4.0f}', ' {:3.0f}', ' {:3.0f}', ' {:4.0f}', ' {:4.0f}', ' {:4.0f}', ' {:4.0f}', ' {:4.0f}', ' {: 7.0f}', ' {:4.0f}', ' {:1.0f}', ' {:4.0f}']
 	
-	values = [dct[key] for key in ['NVIB', 'KNMIN', 'KNMAX', 'IXX', 'IAX', 'WTPL', 'WTMN', 'VSYM', 'EWT', 'DIAG', 'XOPT'] if key in dct ]
-	line = f"{dct['SPIND']}"+ "".join([fs.format(x) for x, fs in zip(values, formats)])
+	values = [dct[key] for key in ['SPIND', 'NVIB', 'KNMIN', 'KNMAX', 'IXX', 'IAX', 'WTPL', 'WTMN', 'VSYM', 'EWT', 'DIAG', 'XOPT'] if key in dct ]
+	line = f"{dct['CHR']}"+ "".join([fs.format(x) for x, fs in zip(values, formats)])
 	output.append(line)
 	
 	for state in dct["STATES"]:
