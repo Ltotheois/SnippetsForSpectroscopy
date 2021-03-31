@@ -5,7 +5,7 @@
 # Description : SPFIT/SPCAT wrapping Library
 
 
-import os
+import os, io
 import argparse
 import subprocess
 import pandas as pd
@@ -32,6 +32,9 @@ _egy_df_dtypes = [np.int16, np.int16, np.float64, np.float64, np.float64, np.int
 _egy_df_widths = [0,6,11,29,47,58,63,64,67,70,73,76,79,82]
 
 ## Helper
+def str_to_stream(string):
+	return(io.StringIO(string))
+
 def column_to_float(val):
 	val = val.strip()
 	if val == "" or val == ":":
@@ -61,7 +64,8 @@ def lin_to_df(fname):
 	dtypes_dict = {column_names[i]:dtypes[i] for i in range(len(column_names))}
 	
 	data = []
-	with open(fname, "r") as file:
+	tmp_file = open(fname, "r") if not isinstance(fname, io.StringIO) else fname
+	with tmp_file as file:
 		for line in file:
 			if line.strip() == "" or line.startswith("#"):
 				continue
@@ -161,7 +165,8 @@ def egy_to_df(fname):
 	dtypes_dict = {column_names[i]:dtypes[i] for i in range(len(column_names))}
 
 	data = []
-	with open(fname, "r") as file:
+	tmp_file = open(fname, "r") if not isinstance(fname, io.StringIO) else fname
+	with tmp_file as file:
 		for line in file:
 			if line.strip() == "" or line.startswith("#"):
 				continue
@@ -174,7 +179,8 @@ def egy_to_df(fname):
 
 def parvar_to_dict(fname):
 	result = {}
-	with open(fname, "r") as file:
+	tmp_file = open(fname, "r") if not isinstance(fname, io.StringIO) else fname
+	with tmp_file as file:
 		result["TITLE"] = file.readline().replace("\n", "")
 		
 		keys = ['NPAR', 'NLINE', 'NITR', 'NXPAR', 'THRESH ', 'ERRTST', 'FRAC', 'CAL']
@@ -242,7 +248,8 @@ def dict_to_parvar(dct):
 
 def int_to_dict(fname):
 	result = {}
-	with open(fname, "r") as file:
+	tmp_file = open(fname, "r") if not isinstance(fname, io.StringIO) else fname
+	with tmp_file as file:
 		result["TITLE"] = file.readline().replace("\n", "")
 		
 		keys = ['FLAGS', 'TAG', 'QROT', 'FBGN', 'FEND', 'STR0', 'STR1', 'FQLIM', 'TEMP', 'MAXV']

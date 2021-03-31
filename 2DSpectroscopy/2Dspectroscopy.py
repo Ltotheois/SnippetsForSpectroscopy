@@ -3,16 +3,12 @@
 
 import os
 import traceback
-try:
-	import numpy as np
-	import plotly.offline as py
-	import plotly.graph_objs as go
-except Exception as E:
-	print("Please install the libraries first.")
-	print(E)
-	print()
-	print(traceback.format_exc())
-	input()
+import numpy as np
+import plotly.offline as py
+import plotly.graph_objs as go
+
+def get_pump_frequency_from_filename(file):
+	return(float(file.split("_")[3]))
 
 def get_filenames(folder=None, fileending=".dat"):
 	if folder == None:
@@ -29,7 +25,7 @@ def get_data_from_files(filenames, folder):
 	data_dict={}
 	for file in filenames:
 		try:
-			pump_frequency = float(file.split("_")[3])
+			pump_frequency = get_pump_frequency_from_filename(file)
 		except ValueError:
 			print(f"Could not find the pump-frequency for {file}.")
 			continue

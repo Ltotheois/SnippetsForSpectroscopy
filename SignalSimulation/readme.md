@@ -8,3 +8,5 @@ animation.py in the Conventional or DMDR folder allows to choose between the sim
 animation_drdm.py in the DMDR folder shows the Double Modulation Double Resonance (DR-DR) case in greater detail.
 
 FMAmplitude.py in the FMAmplitude folder shows the case of a too small, a good and a too big modulation amplitude. Additionally the 1f-case is depicted.
+
+DMDR_picture.py in the DMDR_picture folder shows the most essential steps of the DM-DR as a picture.
