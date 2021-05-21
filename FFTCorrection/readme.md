@@ -12,4 +12,4 @@ Press *Save* (enter or space) to save the FFT-corrected version of a file and go
 
 Press *Next* (Esc or ctrl+right) to go to the next file without saving, press *Previous* (ctrl+left) to go to the previous file without saving. Press *Quit* (ctrl+q) to close the script. 
 
-You can zoom in the plots by selecting a range with the mouse. To go back to the initial zoom press *Reset Zoom* (ctrl+r). To save the currently displayed figure press *Save Figure* (ctrl+s).
+You can zoom in the plots by selecting a range with the right mouse button. To go back to the initial zoom press *Reset Zoom* (ctrl+r). To save the currently displayed figure press *Save Figure* (ctrl+s).

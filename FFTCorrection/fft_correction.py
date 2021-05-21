@@ -99,6 +99,7 @@ def crawl_info_file(filename):
 def decrease_standingwave(data_in, save_data):
 	global xs, ys, ys_corr, duration, filename, current_index, x_range, data
 	data = data_in
+	
 	def onclick(event):
 		if event.inaxes == ax1:
 			if event.button == 1:
@@ -108,7 +109,7 @@ def decrease_standingwave(data_in, save_data):
 	def onzoom(vmin, vmax, i):
 		global x_range, fft_range
 		if vmin == vmax:
-			cut_off_slider.set_val(vmin)
+			return
 		elif i < 2:
 			fft_range = [vmin, vmax]
 		else:
@@ -288,13 +289,13 @@ def decrease_standingwave(data_in, save_data):
 	
 	update_plot()
 
-	# cid_1 = fig.canvas.mpl_connect('button_press_event', onclick) # Is now done by span selectors
+	cid_1 = fig.canvas.mpl_connect('button_press_event', onclick) # Is now done by span selectors
 	cid_2 = fig.canvas.mpl_connect('key_press_event', lambda event: press(event.key))
 
 	rectprops = dict(facecolor='blue', alpha=0.5)
 	span_selectors = {}
 	for i, ax in enumerate((ax0, ax1, ax2, ax3)):
-		span_selectors[i] = SpanSelector(ax, lambda vmax, vmin, index=i: onzoom(vmax, vmin, index), 'horizontal',rectprops=rectprops, useblit=True, button = 1)
+		span_selectors[i] = SpanSelector(ax, lambda vmax, vmin, index=i: onzoom(vmax, vmin, index), 'horizontal',rectprops=rectprops, useblit=True, button = 3)
 	
 	
 	fig.tight_layout()
