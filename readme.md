@@ -4,7 +4,7 @@ This repository collects snippets of code, that are useful in the everyday life 
 
 Any feedback is appreciated, especially hymns of praise.
 
-
+If you are interested in Loomis-Wood plots or fast assignment of lines, take a look at [LLWP](https://ltotheois.github.io/LLWP/).
 
 ## License
 
