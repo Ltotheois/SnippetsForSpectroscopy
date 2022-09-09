@@ -373,6 +373,6 @@ axs[8].add_artist(patch)
 ##
 fig.subplots_adjust(right = 0.8, top = 0.96)
 
-plt.savefig("DMDR_picture.pdf")
+plt.savefig("dmdr_figure.pdf")
 # plt.show()
 plt.close()

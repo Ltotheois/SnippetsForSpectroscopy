@@ -493,7 +493,7 @@ else:
 fig.subplots_adjust(right = 0.8, top = 0.96)
 anim = animation.FuncAnimation(fig, animate, frames=settings["frames"]+100, interval=interval, blit=True, repeat=False, save_count=settings["frames"]+100)
 if save:
-	anim.save("animation_dmdr.mp4", writer="ffmpeg")
+	anim.save("dmdr_figure.mp4", writer="ffmpeg")
 if show:
 	plt.show()
 plt.close()

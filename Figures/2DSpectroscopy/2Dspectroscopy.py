@@ -40,7 +40,7 @@ def get_data_from_files(filenames, folder):
 	return(x_values, y_values, z_matrix)
 
 def plot_surface(x_values, y_values, z_matrix, filename=None):
-	filename = "surface.html" if filename==None else filename
+	filename = "2Dspectroscopy.html" if filename==None else filename
 
 	layout = go.Layout(
 		title="",

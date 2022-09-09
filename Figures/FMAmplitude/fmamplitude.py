@@ -244,6 +244,6 @@ _ = shared_labels(fig, gs[:, :], "Frequency [A.U.]", "Intensity [A.U.]")
 ## Saving/showing
 ##
 fig.subplots_adjust(right = 0.9, top = 0.90, bottom=0.15, left=0.12)
-fig.savefig("FMAmplitude.pdf")
+fig.savefig("fmamplitude.pdf")
 # plt.show()
 plt.close()
