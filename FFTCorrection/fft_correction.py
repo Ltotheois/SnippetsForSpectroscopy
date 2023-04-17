@@ -228,7 +228,7 @@ def decrease_standingwave(data_in, save_data):
 		ax3.set_xticks(np.linspace(*x_range, 5))
 		ax3.set_xticklabels([f"{x:.2f}" for x in np.linspace(*x_range, 5)])
 		
-		line.set_xdata(cutoff_freq)
+		line.set_xdata([cutoff_freq])
 		title_ax.set_title(f"{current_index+1}/{len(data)}: {os.path.basename(filename)}", ha="center")
 
 		fig.canvas.draw_idle()
@@ -292,10 +292,9 @@ def decrease_standingwave(data_in, save_data):
 	cid_1 = fig.canvas.mpl_connect('button_press_event', onclick) # Is now done by span selectors
 	cid_2 = fig.canvas.mpl_connect('key_press_event', lambda event: press(event.key))
 
-	rectprops = dict(facecolor='blue', alpha=0.5)
 	span_selectors = {}
 	for i, ax in enumerate((ax0, ax1, ax2, ax3)):
-		span_selectors[i] = SpanSelector(ax, lambda vmax, vmin, index=i: onzoom(vmax, vmin, index), 'horizontal',rectprops=rectprops, useblit=True, button = 3)
+		span_selectors[i] = SpanSelector(ax, lambda vmax, vmin, index=i: onzoom(vmax, vmin, index), 'horizontal', useblit=True, button = 3)
 	
 	
 	fig.tight_layout()
