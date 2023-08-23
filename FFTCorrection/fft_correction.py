@@ -6,7 +6,7 @@
 
 import sys, os
 import numpy as np
-import pandas as pd
+import configparser
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider, Button, SpanSelector
 from matplotlib import gridspec
@@ -17,7 +17,7 @@ from datetime import datetime
 from dateutil.parser import parse
 
 plt.rcParams['toolbar'] = 'None'
-
+config_parser = configparser.ConfigParser(interpolation=None)
 
 def calculate_y_limits(ys):
 	ymin = np.nanmin(ys)
@@ -26,74 +26,14 @@ def calculate_y_limits(ys):
 	
 	return((ymin-0.1*ydiff, ymax+0.1*ydiff))
 
-def crawl_info_file(filename):
-		with open(filename, "r") as file:
-			data = file.read()
-
-		blocks = [block.split("\n") for block in data.split("\n\n")]
-
-		db_dict={}
-		db_dict["filename"]		=	os.path.basename(filename)
-		if db_dict["filename"].find("fat.")!=-1:
-			db_dict["status"]	=	0
-		elif db_dict["filename"][0]=="B":
-			db_dict["status"]	=	+2
-		else:
-			db_dict["status"]	=	+1
-		
-		#Block 0
-		#General
-		db_dict["experimentalist"]	=	blocks[0][0].split(" measured",1)[0]
-		db_dict["molecule"]			=	blocks[0][0].split(": ",1)[1]
-		[db_dict["datestart"],db_dict["datestop"]]=blocks[0][1].replace("Measurement started on ","").split(" and finished at ")
-		db_dict["measurementtype"]	=	blocks[0][2].split(": ",1)[1]
-		
-		for i in ["datestart", "datestop"]:
-			db_dict[i]=str(parse(db_dict[i]))
-			
-		#Block 1
-		#Probe Synthesizer
-		db_dict["freqstart"]	=	float(blocks[1][1].split(": ",1)[1].replace("MHz",""))
-		db_dict["freqcenter"]	=	float(blocks[1][2].split(": ",1)[1].replace("MHz",""))
-		db_dict["freqstop"]		=	float(blocks[1][3].split(": ",1)[1].replace("MHz",""))
-		db_dict["span"]			=	float(blocks[1][4].split(": ",1)[1].replace("MHz",""))
-		db_dict["steps"]		=	float(blocks[1][5].split(": ",1)[1])
-		db_dict["stepsize"]		=	float(blocks[1][6].split(": ",1)[1].replace("kHz",""))
-		db_dict["datapoints"]	=	float(blocks[1][7].split(": ",1)[1])
-		db_dict["mfactor"]		=	float(blocks[1][8].split(": ",1)[1])
-		db_dict["fmdeviation"]	=	float(blocks[1][9].split(": ",1)[1].replace("kHz/V",""))
-		db_dict["probepower"]	=	float(blocks[1][10].split(": ",1)[1].replace("dBm",""))
-
-		#Block 2     
-		#Pump Synthesizer           
-							
-		#Block 3                 
-		#Lock In                  
-		db_dict["delaytime"]	=	float(blocks[3][1].split(": ",1)[1].replace("ms",""))
-		db_dict["timeconstant"]	=	float(blocks[3][2].split(": ",1)[1].replace("ms",""))
-		db_dict["averagedpoints"]=	float(blocks[3][3].split(": ",1)[1])
-		db_dict["averagediter"]	=	float(blocks[3][4].split(": ",1)[1])
-		db_dict["oscfreq"]		=	float(blocks[3][5].split(": ",1)[1].replace("Hz",""))
-		db_dict["oscamplitude"]	=	float(blocks[3][6].split(": ",1)[1].replace("V",""))
-		db_dict["ADCslope"]		=	float(blocks[3][7].split(": ",1)[1].replace("dB/ocatve",""))
-		db_dict["ACgain"]		=	float(blocks[3][8].split(": ",1)[1].replace("dB",""))
-								
-		#Block 3                 
-		#Pressure                   
-		db_dict["totFMmod"]		=	float(blocks[4][0].split("= ",1)[1].replace("kHz",""))
-		if blocks[4][1].split(": ",1)[0]=="Pressure":
-			db_dict["pressurestart"]=	"pressure not available"
-			db_dict["pressureend"]	=	"pressure not available"
-		else:
-			db_dict["pressurestart"]=	blocks[4][1].split(": ",1)[1].replace("mbar","")
-			db_dict["pressureend"]	=	blocks[4][2].split(": ",1)[1].replace("mbar","")
-		for i in ("pressurestart", "pressureend"):
-			if db_dict[i].find("pressure not available")!=-1:
-				db_dict[i]=-1
-			else:
-				db_dict[i]=float(db_dict[i])
-		
-		return(db_dict)
+def get_duration(filename):
+	config_parser.read(filename)
+	
+	start = parse(config_parser["General"]["datestart"])
+	end   = parse(config_parser["General"]["dateend"])
+	
+	duration = (end - start).total_seconds()/2
+	return(duration)
 
 
 def decrease_standingwave(data_in, save_data):
@@ -313,25 +253,23 @@ def get_data():
 	except Exception as E:
 		filenames = input("Enter filenames: ").split(",")
 	
-	filenames = list(set(filenames))
+	filenames = sorted(list(set(filenames)))
 	data = []
 	
 	# Fill data array
 	
 	for filename in filenames:
 		# Get x- and y-data
-		df = pd.read_csv(filename, sep="\t", skip_blank_lines=True, dtype=np.float64, names=(["x", "y"]))
-		xs = df["x"].to_numpy()
-		ys = df["y"].to_numpy()
+		tmp = np.genfromtxt(filename, delimiter="\t")
+		xs = tmp[:, 0]
+		ys = tmp[:, 1]
 		
 		# Get duration if possible, otherwise set to 30
 		fname, extension = os.path.splitext(filename)
 		try:
-			db_dict=crawl_info_file(fname+".info")
-			date_start=parse(db_dict["datestart"])
-			date_stop=parse(db_dict["datestop"])
-			duration=(date_stop-date_start).total_seconds()/2
+			duration = get_duration(fname + ".ini")
 		except Exception as E:
+			raise E
 			duration = 30
 			
 		data.append((xs, ys, duration, filename))
@@ -342,8 +280,7 @@ if __name__ == '__main__':
 	# Set up what should happen with corrected data, here just save to file
 	def save_data(xs, ys, filename):
 		fname, extension = os.path.splitext(filename)
-		df = pd.DataFrame({"x": xs, "y":ys})
-		df.to_csv(fname + "FFT" + extension, header=False, index=False, sep="\t")
-		
-		# Start main function
+		np.savetxt(fname + "FFT" + extension, np.vstack((xs, ys)).T, delimiter="\t")
+	
+	
 	decrease_standingwave(get_data(), save_data)
