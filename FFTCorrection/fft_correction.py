@@ -6,9 +6,8 @@
 
 import sys, os
 import numpy as np
-import configparser
 import matplotlib.pyplot as plt
-from matplotlib.widgets import Slider, Button, SpanSelector
+from matplotlib.widgets import Slider, Button, SpanSelector, TextBox
 from matplotlib import gridspec
 import scipy.fftpack
 
@@ -17,7 +16,7 @@ from datetime import datetime
 from dateutil.parser import parse
 
 plt.rcParams['toolbar'] = 'None'
-config_parser = configparser.ConfigParser(interpolation=None)
+HIGHPASS = 5
 
 def calculate_y_limits(ys):
 	ymin = np.nanmin(ys)
@@ -26,18 +25,19 @@ def calculate_y_limits(ys):
 	
 	return((ymin-0.1*ydiff, ymax+0.1*ydiff))
 
-def get_duration(filename):
-	config_parser.read(filename)
-	
-	start = parse(config_parser["General"]["datestart"])
-	end   = parse(config_parser["General"]["dateend"])
-	
-	duration = (end - start).total_seconds()/2
-	return(duration)
+def high_pass_filter(omega, omega_down, n=5):
+	if omega_down <= 0:
+		return(np.ones(omega.shape))
 
+	mask = (omega == 0)
+	results = omega.copy()
+	results[mask] = 0
+	results[~mask] = 1 / (1 + (omega_down/omega[~mask]) ** (2*n))
+	
+	return(results)
 
 def decrease_standingwave(data_in, save_data):
-	global xs, ys, ys_corr, duration, filename, current_index, x_range, data
+	global xs, ys, ys_corr, filename, current_index, x_range, data, HIGHPASS
 	data = data_in
 	
 	def onclick(event):
@@ -57,7 +57,8 @@ def decrease_standingwave(data_in, save_data):
 		update_plot(rescale = False)
 	
 	def press(key):
-		global xs, ys, ys_corr, duration, filename, current_index, data
+		print("Running press")
+		global xs, ys, ys_corr, filename, current_index, data
 		
 		if key=="left":
 			cut_off_slider.set_val(cut_off_slider.val-0.01)
@@ -75,6 +76,13 @@ def decrease_standingwave(data_in, save_data):
 			cut_off_slider.set_val(cut_off_slider.val-0.15)
 		elif key=="shift+down":
 			cut_off_slider.set_val(cut_off_slider.val-0.2)
+		elif key == "highpass":
+			text = highpass_textbox.text
+			try:
+				HIGHPASS = int(text)
+				print(f"Using highpass of order {HIGHPASS}.")
+			except ValueError:
+				print("No valid number for HIGHPASS")
 		
 		elif key in [" ", "space", "enter"]:
 			save_data(xs, ys_corr, filename)
@@ -114,25 +122,31 @@ def decrease_standingwave(data_in, save_data):
 			data = get_data()
 			current_index = 0
 			update_plot()
+		
 	
 	def update_plot(rescale = True):
-		global xs, ys, ys_corr, duration, filename, current_index, x_range, fft_range, data
+		print("Running update")
+		global xs, ys, ys_corr, filename, current_index, x_range, fft_range, data, HIGHPASS
 		
 		if len(data) == 0 or current_index > len(data):
 			return
 		
-		xs, ys, duration, filename = data[current_index]
+		xs, ys, filename = data[current_index]
 		cutoff_freq = cut_off_slider.val
+		N = len(xs)
 		
-		fft_ys		= scipy.fftpack.rfft(ys)
-		fft_xs		= scipy.fftpack.rfftfreq(len(ys), duration/len(xs))
+		fft_ys = scipy.fftpack.rfft(ys)
+		fft_xs = scipy.fftpack.rfftfreq(N, xs[1]-xs[0])
 		
-		fft_cut = [x for x in fft_ys]
-		fft_bas = [x for x in fft_ys]
-
-		fft_cut = [fft_ys[i] if fft_xs[i] > cutoff_freq else 0 for i in range(len(fft_ys))]
-		fft_bas = [fft_ys[i] if fft_xs[i] < cutoff_freq else 0 for i in range(len(fft_ys))]
-				
+		if HIGHPASS:
+			filter_ys = high_pass_filter(fft_xs, cutoff_freq, HIGHPASS)
+			fft_cut = fft_ys * filter_ys
+			fft_bas = fft_ys * (1-filter_ys)
+		else:
+			filter_ys = fft_xs > cutoff_freq
+			fft_cut = np.where(filter_ys, fft_ys, 0)
+			fft_bas = np.where(~filter_ys, fft_ys, 0)
+		
 		ys_corr = scipy.fftpack.irfft(fft_cut)
 		ys_base = scipy.fftpack.irfft(fft_bas)
 		
@@ -221,11 +235,15 @@ def decrease_standingwave(data_in, save_data):
 		tmp_button.on_clicked(lambda a, key=key: press(key))
 		refs[key] = tmp_button
 		
-	for i, (text, key) in enumerate(buttons_nsi):		
-		tmp_ax = fig.add_subplot(gs[8, 4*i:4*(i+1)])
+	for i, (text, key) in enumerate(buttons_nsi):
+		tmp_ax = fig.add_subplot(gs[8, 3*i:3*(i+1)])
 		tmp_button = Button(tmp_ax, text)
 		tmp_button.on_clicked(lambda a, key=key: press(key))
 		refs[key] = tmp_button
+	
+	tmp_ax = fig.add_subplot(gs[8, -1])
+	highpass_textbox = TextBox(tmp_ax, "HPR", initial=HIGHPASS)
+	highpass_textbox.on_submit(lambda a, key="highpass": press(key))
 	
 	update_plot()
 
@@ -235,7 +253,6 @@ def decrease_standingwave(data_in, save_data):
 	span_selectors = {}
 	for i, ax in enumerate((ax0, ax1, ax2, ax3)):
 		span_selectors[i] = SpanSelector(ax, lambda vmax, vmin, index=i: onzoom(vmax, vmin, index), 'horizontal', useblit=True, button = 3)
-	
 	
 	fig.tight_layout()
 	plt.show()
@@ -264,15 +281,9 @@ def get_data():
 		xs = tmp[:, 0]
 		ys = tmp[:, 1]
 		
-		# Get duration if possible, otherwise set to 30
 		fname, extension = os.path.splitext(filename)
-		try:
-			duration = get_duration(fname + ".ini")
-		except Exception as E:
-			raise E
-			duration = 30
 			
-		data.append((xs, ys, duration, filename))
+		data.append((xs, ys, filename))
 	return(data)
 
 if __name__ == '__main__':
