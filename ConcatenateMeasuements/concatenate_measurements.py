@@ -56,7 +56,7 @@ def concat_measurements(filenames, outputfilename):
 
 if __name__ == '__main__':
 	epilog = 'Concatenate multiple measurements into a single file'
-	parser = argparse.ArgumentParser(prog='Retrophase', epilog=epilog, formatter_class=argparse.RawDescriptionHelpFormatter)
+	parser = argparse.ArgumentParser(prog='Concatenate Measurements', epilog=epilog, formatter_class=argparse.RawDescriptionHelpFormatter)
 	
 	parser.add_argument('files', nargs='*', type=str, help='Glob string for files to be loaded')
 	parser.add_argument('--output', '-o', type=str, default=None, help='Output file')
