@@ -110,9 +110,10 @@ def fit_lineshape(lineshape, xs, ys):
     perr = np.sqrt(np.diag(pcov))
     return(popt, perr)
 
-def run_calibration(cat_df, xmin=None, xmax=None, max_x_deviation=0.1, existing_measurements=None, skip_figure=False):
+def run_calibration(cat_df, xmin=None, xmax=None, max_x_deviation=0.1, existing_measurements=None, skip_figure=False, folder_path=None):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    folder_path = 'Calibration_' + timestamp
+    if not folder_path:
+        folder_path = 'Calibration_' + timestamp
     os.makedirs(folder_path, exist_ok=True)
 
     listfname = os.path.join(folder_path, 'Calibration.list')
@@ -236,7 +237,7 @@ def run_calibration(cat_df, xmin=None, xmax=None, max_x_deviation=0.1, existing_
 
     report_string = '\n'.join(report_string)
     print(report_string)
-    with open(os.path.join(folder_path, 'Report.txt'), 'w+') as file:
+    with open(os.path.join(folder_path, 'Report.txt'), 'w+', encoding='utf-8') as file:
         ansi_escape = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
         clean_text = ansi_escape.sub('', report_string)
         file.write(clean_text)
@@ -307,6 +308,14 @@ if __name__ == "__main__":
         help="Do not automatically open the summary figure"
     )
 
+    parser.add_argument(
+        '-f',
+        '--folderpath',
+        type=str,
+        default = None,
+        help="Folder to save calibration to"
+    )
+
     args = parser.parse_args()
     xmin, xmax = args.range
 
@@ -331,4 +340,4 @@ if __name__ == "__main__":
 
     cat_df = pd.concat(cat_dfs).reset_index(drop=True)
 
-    run_calibration(cat_df, xmin, xmax, existing_measurements=args.existing)
+    run_calibration(cat_df, xmin, xmax, existing_measurements=args.existing, folder_path=args.folderpath)
