@@ -184,9 +184,8 @@ def run_calibration(cat_df, xmin=None, xmax=None, max_x_deviation=0.1, existing_
         xoffset = sum(exp_range)/2
 
         popt, perr = fit_lineshape(lineshape, xs-xoffset, ys, baselinerank=baselinerank)
-        popt[0] += xoffset
 
-        x0 = popt[0]
+        x0 = popt[0] + xoffset
 
         closest_idx = (cat_df["x"] - x0).abs().idxmin()
         closest_row = cat_df.loc[closest_idx]
@@ -195,7 +194,7 @@ def run_calibration(cat_df, xmin=None, xmax=None, max_x_deviation=0.1, existing_
             print(f'⚠️  File was skipped due to large deviation from literature position: {measurement_fname}')
             continue
 
-        x0_exp = uncertainties.ufloat(popt[0], perr[0])
+        x0_exp = uncertainties.ufloat(x0, perr[0])
         x0_lit = uncertainties.ufloat(closest_row['x'], closest_row['error'])
 
         fit_results.append((x0_exp.n, x0_lit.n, x0_exp.s, x0_lit.s))
@@ -210,7 +209,7 @@ def run_calibration(cat_df, xmin=None, xmax=None, max_x_deviation=0.1, existing_
             ax.plot(fit_xs, fit_ys, color="#648FFF", label='Fit', linewidth=1)
 
             ax.set_xlabel('Frequency [MHz]')
-            ax.set_xlabel('Intensity [A.U.]')
+            ax.set_ylabel('Intensity [A.U.]')
             ax.set_xlim(*exp_range)
 
             ax.xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(nbins=5))
