@@ -16,6 +16,9 @@ import matplotlib
 import matplotlib.pyplot as plt
 import shutil
 
+matplotlib.rcParams['axes.formatter.useoffset'] = False
+
+
 BOLD = "\033[1m"
 RESET = "\033[0m"
 GREEN = "\033[92m"
@@ -46,7 +49,7 @@ def get_cat_file_from_cdms(label, url, timeout=30):
     cat['filename'] = label
     return cat
 
-def Voigt(derivative, x, x0, amp, fwhm_gauss, fwhm_lorentz):
+def Voigt(derivative, x, x0, amp, fwhm_gauss, fwhm_lorentz, *poly_vals):
     sigma = fwhm_gauss / (2 * np.sqrt(2 * np.log(2)))
     gamma = fwhm_lorentz / 2
     if gamma == sigma == 0:
@@ -88,10 +91,11 @@ def Voigt(derivative, x, x0, amp, fwhm_gauss, fwhm_lorentz):
     if ymax == 0:
         ymax = 1
     ys *= amp / ymax
+    ys += np.polyval(poly_vals, x)
 
     return ys
 
-def fit_lineshape(lineshape, xs, ys):
+def fit_lineshape(lineshape, xs, ys, baselinerank=0):
     xmin, xmax = xs.min(), xs.max()
     x0 = (xmin + xmax) / 2
     yptp = np.ptp(ys)
@@ -103,17 +107,22 @@ def fit_lineshape(lineshape, xs, ys):
 
     amp_min, amp_max = -3 * yptp, 3 * yptp
 
-    p0 = [x0, y0, w0, w0]
-    bounds = [[xmin, amp_min, wmin, wmin], [xmax, amp_max, wmax, wmax]]
+    p0 = [x0, y0, w0, w0] + [0] * baselinerank
+    bounds = [
+        [xmin, amp_min, wmin, wmin] + [-np.inf] * baselinerank, 
+        [xmax, amp_max, wmax, wmax] + [+np.inf] * baselinerank, 
+    ]
 
     popt, pcov = optimize.curve_fit(lineshape, xs, ys, p0=p0, bounds=bounds)
     perr = np.sqrt(np.diag(pcov))
     return(popt, perr)
 
-def run_calibration(cat_df, xmin=None, xmax=None, max_x_deviation=0.1, existing_measurements=None, skip_figure=False, folder_path=None):
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+def run_calibration(cat_df, xmin=None, xmax=None, max_x_deviation=0.1, existing_measurements=None, skip_figure=False, folder_path=None, individual_figure=False, baselinerank=0):
+    now = datetime.now()
+    timestamp = now.strftime("%Y/%m/%d %H:%M:%S")
+    timestamp_folder = now.strftime("%Y%m%d_%H%M%S")
     if not folder_path:
-        folder_path = 'Calibration_' + timestamp
+        folder_path = 'Calibration_' + timestamp_folder
     os.makedirs(folder_path, exist_ok=True)
 
     listfname = os.path.join(folder_path, 'Calibration.list')
@@ -139,7 +148,6 @@ def run_calibration(cat_df, xmin=None, xmax=None, max_x_deviation=0.1, existing_
 
     with open(listfname, 'w+') as file:
         file.write(list_content)
-
 
 
     print(f'✅ Wrote {len(cat_df)} transitions to the file \'{listfname}\'.\n')
@@ -172,8 +180,12 @@ def run_calibration(cat_df, xmin=None, xmax=None, max_x_deviation=0.1, existing_
     for measurement_fname in measurement_fnames:
         data = np.genfromtxt(measurement_fname, delimiter='\t')
         xs, ys = data[:, 0], data[:, 1]
-        popt, perr = fit_lineshape(lineshape, xs, ys)
-        
+        exp_range= xs.min(), xs.max()
+        xoffset = sum(exp_range)/2
+
+        popt, perr = fit_lineshape(lineshape, xs-xoffset, ys, baselinerank=baselinerank)
+        popt[0] += xoffset
+
         x0 = popt[0]
 
         closest_idx = (cat_df["x"] - x0).abs().idxmin()
@@ -188,6 +200,29 @@ def run_calibration(cat_df, xmin=None, xmax=None, max_x_deviation=0.1, existing_
 
         fit_results.append((x0_exp.n, x0_lit.n, x0_exp.s, x0_lit.s))
         labels.append(closest_row['filename'])
+
+        if individual_figure:
+            fit_xs = np.linspace(*exp_range, 1000)
+            fit_ys = lineshape(fit_xs-xoffset, *popt)
+
+            fig, ax = plt.subplots()
+            ax.plot(xs, ys, color="#DC267F", label='Experiment', linewidth=2)
+            ax.plot(fit_xs, fit_ys, color="#648FFF", label='Fit', linewidth=1)
+
+            ax.set_xlabel('Frequency [MHz]')
+            ax.set_xlabel('Intensity [A.U.]')
+            ax.set_xlim(*exp_range)
+
+            ax.xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(nbins=5))
+            ax.yaxis.set_major_locator(matplotlib.ticker.MaxNLocator(nbins=5))
+            ax.xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator(5))
+            ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator(5))
+            ax.grid(which='both', linestyle=':', linewidth=0.5, color='gray')
+
+            ax.legend(loc='upper right')
+            plt.tight_layout()
+            plt.savefig(os.path.splitext(measurement_fname)[0] + ".png", dpi=600)
+
 
     if not len(fit_results):
         print(f'⚠️  No file was analyzed!')
@@ -253,7 +288,7 @@ def run_calibration(cat_df, xmin=None, xmax=None, max_x_deviation=0.1, existing_
     ax.yaxis.set_major_locator(matplotlib.ticker.MaxNLocator(nbins=5))
     ax.xaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator(5))
     ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator(5))
-    ax.grid(which='both', linestyle=':', linewidth=0.5, color='gray')  # minor grid
+    ax.grid(which='both', linestyle=':', linewidth=0.5, color='gray')
 
     plt.tight_layout()
     plt.savefig(os.path.join(folder_path, 'Figure.png'), dpi=600)
@@ -274,17 +309,6 @@ if __name__ == "__main__":
         help="CDMS molecule identifiers (e.g., 60503) or path to *.cat file"
     )
 
-    # Option 1: specify fmin/fmax separately
-    parser.add_argument(
-        "--fmin", type=float, required=False,
-        help="Minimum frequency in MHz (or desired units)"
-    )
-    parser.add_argument(
-        "--fmax", type=float, required=False,
-        help="Maximum frequency"
-    )
-
-    # Optional: a range as two numbers at once
     parser.add_argument(
         '-r',
         "--range",
@@ -295,8 +319,8 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        '-e',
-        '--existing',
+        '-m',
+        '--measurements',
         type=str,
         help='Glob string to already existing measurements',
     )
@@ -316,12 +340,24 @@ if __name__ == "__main__":
         help="Folder to save calibration to"
     )
 
+    parser.add_argument(
+        '-i',
+        '--individual',
+        action="store_true",
+        help="Create figures for individual lines"
+    )
+
+    parser.add_argument(
+        '-b',
+        '--baselinerank',
+        type=int,
+        default=0,
+        help="Rank of baseline polynom for fit of individual lines"
+    )
+
     args = parser.parse_args()
-    xmin, xmax = args.range
 
     cat_dfs = []
-
-
     if not len(args.molecules):
         molecule_urls = {key: f"https://cdms.astro.uni-koeln.de/classic/entries/c{id:06.0f}.cat" for key, id in molecule_identifiers.items()}
         cat_dfs = [get_cat_file_from_cdms(label, url) for label, url in molecule_urls.items()]
@@ -337,7 +373,6 @@ if __name__ == "__main__":
                 label = molecule_labels.get(id, id)
                 url = f"https://cdms.astro.uni-koeln.de/classic/entries/c{id:06.0f}.cat"
                 cat_dfs.append(get_cat_file_from_cdms(label, url))
-
     cat_df = pd.concat(cat_dfs).reset_index(drop=True)
 
-    run_calibration(cat_df, xmin, xmax, existing_measurements=args.existing, folder_path=args.folderpath)
+    run_calibration(cat_df, *args.range, existing_measurements=args.measurements, folder_path=args.folderpath, skip_figure=args.skip, individual_figure=args.individual, baselinerank=args.baselinerank)
