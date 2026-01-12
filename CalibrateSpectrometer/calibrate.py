@@ -221,6 +221,7 @@ def run_calibration(cat_df, xmin=None, xmax=None, max_x_deviation=0.1, existing_
             ax.legend(loc='upper right')
             plt.tight_layout()
             plt.savefig(os.path.splitext(measurement_fname)[0] + ".png", dpi=600)
+            plt.close()
 
 
     if not len(fit_results):
@@ -295,6 +296,7 @@ def run_calibration(cat_df, xmin=None, xmax=None, max_x_deviation=0.1, existing_
     if not skip_figure:
         plt.show()
 
+    plt.close()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
