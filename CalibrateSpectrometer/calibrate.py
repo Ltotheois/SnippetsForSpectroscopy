@@ -288,7 +288,7 @@ def run_calibration(cat_df, xmin=None, xmax=None, max_x_deviation=0.1, existing_
         freq_spacers = ('-' * 15 + '|') * len(frequency_ranges)
 
         report_string.append(f'\n{BOLD}SUBSETS{RESET}\n')
-        report_string.append(f'Values in table are given as: RMS [kHz] / AVG [kHz] / N\n')
+        report_string.append(f'Values in table are given as: RMS [kHz] / AVG [kHz] / Number of transitions\n')
         report_string.append('|    Label    |' + freq_headers + '   Full Range  |')
         report_string.append('|-------------|' + freq_spacers + '---------------|')
 
