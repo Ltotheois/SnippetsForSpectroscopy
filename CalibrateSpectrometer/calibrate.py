@@ -117,7 +117,7 @@ def fit_lineshape(lineshape, xs, ys, baselinerank=0):
     perr = np.sqrt(np.diag(pcov))
     return(popt, perr)
 
-def run_calibration(cat_df, xmin=None, xmax=None, max_x_deviation=0.1, existing_measurements=None, skip_figure=False, folder_path=None, individual_figure=False, baselinerank=0):
+def run_calibration(cat_df, xmin=None, xmax=None, max_x_deviation=0.1, existing_measurements=None, skip_figure=False, folder_path=None, individual_figure=False, baselinerank=0, frequency_ranges=None):
     now = datetime.now()
     timestamp = now.strftime("%Y/%m/%d %H:%M:%S")
     timestamp_folder = now.strftime("%Y%m%d_%H%M%S")
@@ -258,25 +258,85 @@ def run_calibration(cat_df, xmin=None, xmax=None, max_x_deviation=0.1, existing_
         label = label[:25]
         report_string.append(f'| {xexp:13.4f} | {xlit:13.4f} | {uexp:10.4f} | {ulit:10.4f} | {color}{diff:10.2f}{color_reset} | {color}{diff_unc:10.2f}{color_reset} | {label:25} |')
 
+    report_string.append(f'\n\n{BOLD}STATISTICS{RESET}')
     report_string.append(f'\nUsed a total of {len(xs_exp)} transitions')
     report_string.append(f'\nDeviations RMS: {np.sqrt(np.mean(dxs**2))*1000:10.2f} kHz')
+    report_string.append(f'Deviations AVG: {np.mean(dxs**2)*1000:10.2f} kHz')
 
     i_max = np.argmax(np.abs(dxs))
     tmp = dxs[i_max]
-    report_string.append(f'Max Deviation: {tmp*1000:11.2f} kHz (for x = {xs_exp[i_max]:.2f})')
+    report_string.append(f'\nMax Deviation: {tmp*1000:11.2f} kHz (for x = {xs_exp[i_max]:.2f})')
 
     i_rel_max = np.argmax(np.abs(dxs/udxs))
     tmp = dxs[i_rel_max] / udxs[i_rel_max]
     report_string.append(f'Max Rel Deviation: {tmp:7.2f}     (for x = {xs_exp[i_max]:.2f})\n')
 
 
+    ### Subsets
+
+
+    # Group here data by label and frequency range
+    # Frequency ranges have to be provided by user
+    # GroupBy or mask accordingly and calculate RMS/AVG for each subset and for the whole isotopologue/frequency range
+    # Default frequency range is everything
+
+    if frequency_ranges is not None and len(frequency_ranges):
+        labels = np.array(labels)
+        unique_labels = np.unique(labels)
+
+        freq_headers = ''.join([f'{range[0]/1000:4.0f} -{range[1]/1000:4.0f} GHz |' for range in frequency_ranges])
+        freq_spacers = ('-' * 15 + '|') * len(frequency_ranges)
+
+        report_string.append(f'\n{BOLD}SUBSETS{RESET}\n')
+        report_string.append(f'Values in table are given as: RMS [kHz] / AVG [kHz] / N\n')
+        report_string.append('|    Label    |' + freq_headers + '   Full Range  |')
+        report_string.append('|-------------|' + freq_spacers + '---------------|')
+
+
+        for label in list(unique_labels) + [None]:
+            if label is None:
+                label = 'All'
+                label_mask = True    
+            else:
+                label_mask = (labels == label)
+            row_string = [f'| {label[:12]:12}']
+
+
+            for frequency_range in frequency_ranges + [None]:
+                if frequency_range is None:
+                    frequency_mask = True
+                else:
+                    frequency_mask = ((xs_exp > frequency_range[0]) & (xs_exp < frequency_range[1]))
+
+                combined_mask = (label_mask & frequency_mask)
+                dxs_filtered = dxs[combined_mask]
+                number_of_liens = len(dxs_filtered)
+
+                if number_of_liens:
+                    rms_filtered = 1000 * np.sqrt(np.mean(dxs_filtered**2))
+                    avg_filtered = 1000 * np.mean(dxs_filtered)
+                    
+                    row_string.append(f'{rms_filtered:3.0f} /{avg_filtered:4.0f} /{number_of_liens:3.0f} ')
+                else:
+                    row_string.append(' ' * 15)
+                    
+
+            row_string.append(' ')
+            row_string = '|'.join(row_string)
+            report_string.append(row_string)
+
+    ### Print Report
+    report_string.append('')
     report_string = '\n'.join(report_string)
     print(report_string)
+
+
     with open(os.path.join(folder_path, 'Report.txt'), 'w+', encoding='utf-8') as file:
         ansi_escape = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
         clean_text = ansi_escape.sub('', report_string)
         file.write(clean_text)
 
+    ### Create Overview Figure
     fig, ax = plt.subplots()
     ax.errorbar(xs_exp, dxs, udxs, marker='o', linestyle='none', color='#648FFF')
     ax.axhline(y=0, lw=0.5, color='gray')
@@ -290,13 +350,25 @@ def run_calibration(cat_df, xmin=None, xmax=None, max_x_deviation=0.1, existing_
     ax.yaxis.set_minor_locator(matplotlib.ticker.AutoMinorLocator(5))
     ax.grid(which='both', linestyle=':', linewidth=0.5, color='gray')
 
-    plt.tight_layout()
-    plt.savefig(os.path.join(folder_path, 'Figure.png'), dpi=600)
+    fig.tight_layout()
+    fig.savefig(os.path.join(folder_path, 'Figure.png'), dpi=600)
 
     if not skip_figure:
         plt.show()
 
     plt.close()
+
+
+def parse_range(value):
+    try:
+        start, end = map(float, value.split("-"))
+        if start >= end:
+            raise ValueError
+        return (start, end)
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"Invalid range '{value}'. Use format START-END (e.g. 100-200)"
+        )
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -313,9 +385,8 @@ if __name__ == "__main__":
     parser.add_argument(
         '-r',
         "--range",
-        type=float,
-        nargs=2,
-        help="Specify frequency range",
+        type=parse_range,
+        help="Specify frequency range in format START-END (e.g. 100-200)",
         default=(None, None),
     )
 
@@ -356,6 +427,16 @@ if __name__ == "__main__":
         help="Rank of baseline polynom for fit of individual lines"
     )
 
+    parser.add_argument(
+        "--subset",
+        dest="ranges",
+        action="append",
+        type=parse_range,
+        required=False,
+        help="Frequency range in format START-END (e.g. 100-200). Can be repeated."
+    )
+
+
     args = parser.parse_args()
 
     cat_dfs = []
@@ -376,4 +457,4 @@ if __name__ == "__main__":
                 cat_dfs.append(get_cat_file_from_cdms(label, url))
     cat_df = pd.concat(cat_dfs).reset_index(drop=True)
 
-    run_calibration(cat_df, *args.range, existing_measurements=args.measurements, folder_path=args.folderpath, skip_figure=args.skip, individual_figure=args.individual, baselinerank=args.baselinerank)
+    run_calibration(cat_df, *args.range, existing_measurements=args.measurements, folder_path=args.folderpath, skip_figure=args.skip, individual_figure=args.individual, baselinerank=args.baselinerank, frequency_ranges=args.ranges)
