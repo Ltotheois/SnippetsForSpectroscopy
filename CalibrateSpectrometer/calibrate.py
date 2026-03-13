@@ -444,17 +444,18 @@ if __name__ == "__main__":
         molecule_urls = {key: f"https://cdms.astro.uni-koeln.de/classic/entries/c{id:06.0f}.cat" for key, id in molecule_identifiers.items()}
         cat_dfs = [get_cat_file_from_cdms(label, url) for label, url in molecule_urls.items()]
     else:
-        molecule_urls = {}
-        for id in args.molecules:
-            if os.path.isfile(id):
-                tmp = pyckett.cat_to_df(id)
-                tmp['filename'] = os.path.basename(id)
-                cat_dfs.append(tmp)
-            else:
-                id = int(id)
-                label = molecule_labels.get(id, id)
-                url = f"https://cdms.astro.uni-koeln.de/classic/entries/c{id:06.0f}.cat"
+        for molecule_specifier in args.molecules:
+            try:
+                id_ = int(molecule_specifier)
+                label = molecule_labels.get(id_, id_)
+                url = f"https://cdms.astro.uni-koeln.de/classic/entries/c{id_:06.0f}.cat"
                 cat_dfs.append(get_cat_file_from_cdms(label, url))
+            except ValueError:
+                expanded_files = glob.glob(molecule_specifier)
+                for fname in expanded_files:
+                    tmp = pyckett.cat_to_df(fname)
+                    tmp['filename'] = os.path.basename(fname)
+                    cat_dfs.append(tmp)
     cat_df = pd.concat(cat_dfs).reset_index(drop=True)
 
     run_calibration(cat_df, *args.range, existing_measurements=args.measurements, folder_path=args.folderpath, skip_figure=args.skip, individual_figure=args.individual, baselinerank=args.baselinerank, frequency_ranges=args.ranges)
