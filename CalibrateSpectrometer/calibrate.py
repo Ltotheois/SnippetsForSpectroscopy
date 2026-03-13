@@ -261,7 +261,7 @@ def run_calibration(cat_df, xmin=None, xmax=None, max_x_deviation=0.1, existing_
     report_string.append(f'\n\n{BOLD}STATISTICS{RESET}')
     report_string.append(f'\nUsed a total of {len(xs_exp)} transitions')
     report_string.append(f'\nDeviations RMS: {np.sqrt(np.mean(dxs**2))*1000:10.2f} kHz')
-    report_string.append(f'Deviations AVG: {np.mean(dxs**2)*1000:10.2f} kHz')
+    report_string.append(f'Deviations AVG: {np.mean(dxs)*1000:10.2f} kHz')
 
     i_max = np.argmax(np.abs(dxs))
     tmp = dxs[i_max]
@@ -292,11 +292,11 @@ def run_calibration(cat_df, xmin=None, xmax=None, max_x_deviation=0.1, existing_
         report_string.append('|    Label    |' + freq_headers + '   Full Range  |')
         report_string.append('|-------------|' + freq_spacers + '---------------|')
 
-
+        TRUE_MASK = np.array([True] * len(dxs))
         for label in list(unique_labels) + [None]:
             if label is None:
                 label = 'All'
-                label_mask = True    
+                label_mask = TRUE_MASK   
             else:
                 label_mask = (labels == label)
             row_string = [f'| {label[:12]:12}']
@@ -304,19 +304,19 @@ def run_calibration(cat_df, xmin=None, xmax=None, max_x_deviation=0.1, existing_
 
             for frequency_range in frequency_ranges + [None]:
                 if frequency_range is None:
-                    frequency_mask = True
+                    frequency_mask = TRUE_MASK
                 else:
                     frequency_mask = ((xs_exp > frequency_range[0]) & (xs_exp < frequency_range[1]))
 
                 combined_mask = (label_mask & frequency_mask)
                 dxs_filtered = dxs[combined_mask]
-                number_of_liens = len(dxs_filtered)
+                number_of_lines = len(dxs_filtered)
 
-                if number_of_liens:
+                if number_of_lines:
                     rms_filtered = 1000 * np.sqrt(np.mean(dxs_filtered**2))
                     avg_filtered = 1000 * np.mean(dxs_filtered)
                     
-                    row_string.append(f'{rms_filtered:3.0f} /{avg_filtered:4.0f} /{number_of_liens:3.0f} ')
+                    row_string.append(f'{rms_filtered:3.0f} /{avg_filtered:4.0f} /{number_of_lines:3.0f} ')
                 else:
                     row_string.append(' ' * 15)
                     
@@ -433,7 +433,7 @@ if __name__ == "__main__":
         action="append",
         type=parse_range,
         required=False,
-        help="Frequency range in format START-END (e.g. 100-200). Can be repeated."
+        help="Frequency range in format START-END (e.g. 100000-200000). Can be repeated."
     )
 
 
